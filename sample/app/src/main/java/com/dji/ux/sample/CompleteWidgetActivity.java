@@ -10,13 +10,27 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.Transformation;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
 
 import com.dji.mapkit.core.maps.DJIMap;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import dji.common.gimbal.Attitude;
+import dji.common.gimbal.Rotation;
 import dji.keysdk.CameraKey;
 import dji.keysdk.KeyManager;
+import dji.sdk.mission.MissionControl;
+import dji.sdk.mission.timeline.TimelineElement;
+import dji.sdk.mission.timeline.actions.AircraftYawAction;
+import dji.sdk.mission.timeline.actions.GimbalAttitudeAction;
+import dji.sdk.mission.timeline.actions.LandAction;
+import dji.sdk.mission.timeline.actions.RecordVideoAction;
+import dji.sdk.mission.timeline.actions.ShootPhotoAction;
+import dji.sdk.mission.timeline.actions.TakeOffAction;
 import dji.ux.panel.CameraSettingAdvancedPanel;
 import dji.ux.panel.CameraSettingExposurePanel;
 import dji.ux.utils.DJIProductUtil;
@@ -37,7 +51,7 @@ import dji.ux.widget.controls.LensControlWidget;
 /**
  * Activity that shows all the UI elements together
  */
-public class CompleteWidgetActivity extends Activity {
+public class CompleteWidgetActivity extends Activity implements View.OnClickListener{
 
     private MapWidget mapWidget;
     private ViewGroup parentView;
@@ -67,6 +81,10 @@ public class CompleteWidgetActivity extends Activity {
     private int margin;
     private int deviceWidth;
     private int deviceHeight;
+
+
+    private Button startBtn;
+    private MissionControl missionControl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,8 +117,40 @@ public class CompleteWidgetActivity extends Activity {
         secondaryFPVWidget = findViewById(R.id.secondary_fpv_widget);
         secondaryFPVWidget.setOnClickListener(view -> swapVideoSource());
 
+        startBtn = (Button) parentView.findViewById(R.id.start_button);
+        startBtn.setOnClickListener(this);
+
         fpvWidget.setCameraIndexListener((cameraIndex, lensIndex) -> cameraWidgetKeyIndexUpdated(fpvWidget.getCameraKeyIndex(), fpvWidget.getLensKeyIndex()));
         updateSecondaryVideoVisibility();
+    }
+
+    @Override
+    public void onClick(View view) {
+        List<TimelineElement> elements = new ArrayList<>();
+        missionControl = MissionControl.getInstance();
+
+        elements.add(new TakeOffAction());
+
+        Attitude attitude = new Attitude(-70, Rotation.NO_ROTATION, Rotation.NO_ROTATION);
+        GimbalAttitudeAction gimbalAction = new GimbalAttitudeAction(attitude);
+        gimbalAction.setCompletionTime(1.5);
+        gimbalAction.setDelayTime(3000);
+        elements.add(gimbalAction);
+
+        elements.add(ShootPhotoAction.newShootSinglePhotoAction());
+
+        AircraftYawAction yawAction = new AircraftYawAction(30, true);
+        elements.add(yawAction);
+
+        elements.add(RecordVideoAction.newRecordVideoActionWithDuration(4));
+
+        attitude = new Attitude(0, Rotation.NO_ROTATION, Rotation.NO_ROTATION);
+        gimbalAction = new GimbalAttitudeAction(attitude);
+        gimbalAction.setCompletionTime(1.5);
+        elements.add(gimbalAction);
+
+        LandAction landAction = new LandAction();
+        elements.add(landAction);
     }
 
     private void initCameraView() {
