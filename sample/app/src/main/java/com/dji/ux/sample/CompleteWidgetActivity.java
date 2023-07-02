@@ -151,6 +151,7 @@ public class CompleteWidgetActivity extends Activity implements View.OnClickList
 
         LandAction landAction = new LandAction();
         elements.add(landAction);
+        missionControl.startTimeline();
     }
 
     private void initCameraView() {
