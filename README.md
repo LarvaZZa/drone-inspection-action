@@ -5,9 +5,8 @@
 This repository contians a base implementation of the UX SDK [by DJI](https://github.com/dji-sdk/Mobile-UXSDK-Android), and a custom implementation of the MissionControl object, which executes the element actions of:
 - Taking off;
 - Gimbal pitch action of -70 degrees, with completion time of 1.5 seconds, and a delay of 3 seconds after the action completion;
-- One photo capture;
 - Rotating drone body 30 degrees along the yaw axis relative to true north;
-- Recording a video for 4 seconds;
+- One photo capture ***OR*** Recording a video for 4 seconds;
 - Reseting gimbal pitch to 0 degrees, with completion time of 1.5 seconds;
 - Landing.
 
