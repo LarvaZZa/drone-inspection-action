@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Point;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Display;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,24 +15,34 @@ import android.view.animation.Transformation;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
+
+import androidx.annotation.Nullable;
 
 import com.dji.mapkit.core.maps.DJIMap;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import dji.common.camera.SettingsDefinitions;
+import dji.common.error.DJIError;
 import dji.common.gimbal.Attitude;
 import dji.common.gimbal.Rotation;
+import dji.common.util.CommonCallbacks;
 import dji.keysdk.CameraKey;
 import dji.keysdk.KeyManager;
+import dji.sdk.camera.Camera;
 import dji.sdk.mission.MissionControl;
 import dji.sdk.mission.timeline.TimelineElement;
+import dji.sdk.mission.timeline.TimelineEvent;
+import dji.sdk.mission.timeline.TimelineMission;
 import dji.sdk.mission.timeline.actions.AircraftYawAction;
 import dji.sdk.mission.timeline.actions.GimbalAttitudeAction;
 import dji.sdk.mission.timeline.actions.LandAction;
 import dji.sdk.mission.timeline.actions.RecordVideoAction;
 import dji.sdk.mission.timeline.actions.ShootPhotoAction;
 import dji.sdk.mission.timeline.actions.TakeOffAction;
+import dji.sdk.sdkmanager.DJISDKManager;
 import dji.ux.panel.CameraSettingAdvancedPanel;
 import dji.ux.panel.CameraSettingExposurePanel;
 import dji.ux.utils.DJIProductUtil;
@@ -85,6 +97,9 @@ public class CompleteWidgetActivity extends Activity implements View.OnClickList
 
     private Button startBtn;
     private MissionControl missionControl;
+    private TimelineEvent preEvent;
+    private TimelineElement preElement;
+    private DJIError preError;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -137,21 +152,46 @@ public class CompleteWidgetActivity extends Activity implements View.OnClickList
         gimbalAction.setDelayTime(3000);
         elements.add(gimbalAction);
 
-        elements.add(ShootPhotoAction.newShootSinglePhotoAction());
-
         AircraftYawAction yawAction = new AircraftYawAction(30, true);
         elements.add(yawAction);
 
-        elements.add(RecordVideoAction.newRecordVideoActionWithDuration(4));
+        //either only a photo capture
+        elements.add(ShootPhotoAction.newShootSinglePhotoAction());
+
+        //or only a video recording
+//        RecordVideoAction recordVideoAction = RecordVideoAction.newRecordVideoActionWithDuration(2);
+//        recordVideoAction.setDelayTime(3000);
+//        elements.add(recordVideoAction);
 
         attitude = new Attitude(0, Rotation.NO_ROTATION, Rotation.NO_ROTATION);
         gimbalAction = new GimbalAttitudeAction(attitude);
         gimbalAction.setCompletionTime(1.5);
+        gimbalAction.setDelayTime(3000);
         elements.add(gimbalAction);
 
         LandAction landAction = new LandAction();
         elements.add(landAction);
+        missionControl.scheduleElements(elements);
         missionControl.startTimeline();
+    }
+
+    private void switchCameraMode(SettingsDefinitions.CameraMode cameraMode){
+
+        Camera camera = DJISDKManager.getInstance().getProduct().getCamera();
+        if (camera != null) {
+            camera.setMode(cameraMode, error -> {
+                if (error == null) {
+                    showToast("Switch Camera Mode Succeeded");
+                } else {
+                    showToast(error.getDescription());
+                }
+            });
+        }
+    }
+
+    public void showToast(final String message) {
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(() -> Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show());
     }
 
     private void initCameraView() {
