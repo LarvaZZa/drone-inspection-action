@@ -11,6 +11,7 @@ This repository contians a base implementation of the UX SDK [by DJI](https://gi
 - Landing.
 
 ## How to use the application?
+Make sure to create an API Key via the official [DJI Developer platform](https://developer.dji.com/), and paste the key in the AndroidManifest.xml file.
 
 If you want to execute these elements on the drone, you must:
 - Install the application on your Android phone;
