@@ -97,9 +97,6 @@ public class CompleteWidgetActivity extends Activity implements View.OnClickList
 
     private Button startBtn;
     private MissionControl missionControl;
-    private TimelineEvent preEvent;
-    private TimelineElement preElement;
-    private DJIError preError;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -109,21 +106,17 @@ public class CompleteWidgetActivity extends Activity implements View.OnClickList
         height = DensityUtil.dip2px(this, 100);
         width = DensityUtil.dip2px(this, 150);
         margin = DensityUtil.dip2px(this, 12);
-
         WindowManager windowManager = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
         final Display display = windowManager.getDefaultDisplay();
         Point outPoint = new Point();
         display.getRealSize(outPoint);
         deviceHeight = outPoint.y;
         deviceWidth = outPoint.x;
-
         mapWidget = (MapWidget) findViewById(R.id.map_widget);
         mapWidget.initAMap(map -> map.setOnMapClickListener((DJIMap.OnMapClickListener) latLng -> onViewClick(mapWidget)));
         mapWidget.onCreate(savedInstanceState);
-
         initCameraView();
         parentView = (ViewGroup) findViewById(R.id.root_view);
-
         fpvWidget = findViewById(R.id.fpv_widget);
         fpvWidget.setOnClickListener(view -> onViewClick(fpvWidget));
         fpvOverlayWidget = findViewById(R.id.fpv_overlay_widget);
@@ -132,6 +125,7 @@ public class CompleteWidgetActivity extends Activity implements View.OnClickList
         secondaryFPVWidget = findViewById(R.id.secondary_fpv_widget);
         secondaryFPVWidget.setOnClickListener(view -> swapVideoSource());
 
+        //initialize button that starts drone inspection action
         startBtn = (Button) parentView.findViewById(R.id.start_button);
         startBtn.setOnClickListener(this);
 
@@ -141,39 +135,59 @@ public class CompleteWidgetActivity extends Activity implements View.OnClickList
 
     @Override
     public void onClick(View view) {
+        //array to store elements we want to execute in order with their additional optional settings
         List<TimelineElement> elements = new ArrayList<>();
+
+        //instance of the mission control from the drone to add created missions and execute them
         missionControl = MissionControl.getInstance();
 
+        //adding drone take off / lift off action
         elements.add(new TakeOffAction());
 
+        //adding gimbal action that turns -70 degrees along the pitch, with completion time of 1.5 seconds.
+        //The next action will be executed after 3 seconds
         Attitude attitude = new Attitude(-70, Rotation.NO_ROTATION, Rotation.NO_ROTATION);
         GimbalAttitudeAction gimbalAction = new GimbalAttitudeAction(attitude);
         gimbalAction.setCompletionTime(1.5);
         gimbalAction.setDelayTime(3000);
         elements.add(gimbalAction);
 
+        //adding drone yaw rotation, which turns the drone 30 degrees relative to the North
         AircraftYawAction yawAction = new AircraftYawAction(30, true);
         elements.add(yawAction);
 
-        //either only a photo capture
+        //captures a picture
         elements.add(ShootPhotoAction.newShootSinglePhotoAction());
 
-        //or only a video recording
+        //records a video
 //        RecordVideoAction recordVideoAction = RecordVideoAction.newRecordVideoActionWithDuration(2);
 //        recordVideoAction.setDelayTime(3000);
 //        elements.add(recordVideoAction);
 
+        //for the picture and video capture, for some reason both cannot happen one after another
+
+        //adding gimbal action that turns back to original position of 0 degrees along the pitch,
+        // with completion time of 1.5 seconds.
+        //The next action will be executed after 3 seconds
         attitude = new Attitude(0, Rotation.NO_ROTATION, Rotation.NO_ROTATION);
         gimbalAction = new GimbalAttitudeAction(attitude);
         gimbalAction.setCompletionTime(1.5);
         gimbalAction.setDelayTime(3000);
         elements.add(gimbalAction);
 
+        //adding drone landing action
         LandAction landAction = new LandAction();
         elements.add(landAction);
+
+        //the elements are scheduled
         missionControl.scheduleElements(elements);
+
+        //the elements are started
         missionControl.startTimeline();
     }
+
+    //EVERYTHING BELLOW IS DEVELOPED BY DJI FOR DEMO PURPOSES. THE CODE BELLOW ACTS AS A FOUNDATION THAT WE
+    //BUILD OUR CUSTOM IMPLEMENTATION ON TOP OF.
 
     private void switchCameraMode(SettingsDefinitions.CameraMode cameraMode){
 
